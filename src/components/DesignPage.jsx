@@ -10,6 +10,7 @@ import Step5Summary from './Step5Summary';
 import CheckoutModal from './CheckoutModal';
 import { useDesign, useDesignDispatch } from '../store/DesignContext';
 import { useCartDispatch } from '../store/CartContext';
+import AuthActions from './auth/AuthActions';
 
 export default function DesignPage() {
   const navigate = useNavigate();
@@ -45,7 +46,8 @@ export default function DesignPage() {
         <button onClick={() => navigate('/')} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
           <ArrowLeft className="w-5 h-5 text-brand-text" />
         </button>
-        <span className="ml-2 font-serif font-bold text-brand-wood text-lg">Studio MoryTory</span>
+        <span className="ml-2 font-serif font-bold text-brand-wood text-lg flex-1">Studio MoryTory</span>
+        <AuthActions compact />
       </div>
 
       {/* Left Column (Preview) */}
@@ -83,9 +85,12 @@ export default function DesignPage() {
       {/* Right Column (Control Panel) */}
       <div className="md:w-1/2 flex-1 overflow-y-auto bg-white shadow-[-10px_0_20px_-10px_rgba(0,0,0,0.05)] pb-32 md:pb-0">
         <div className="max-w-xl mx-auto p-6 md:p-12 space-y-10">
-          <div>
-            <h2 className="text-3xl font-serif font-bold text-brand-text mb-2">Thiết Kế Khung Ảnh</h2>
-            <p className="text-gray-500">Tùy chỉnh khung ảnh gỗ và lưu giữ kỷ niệm của bạn.</p>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-3xl font-serif font-bold text-brand-text mb-2">Thiết Kế Khung Ảnh</h2>
+              <p className="text-gray-500">Tùy chỉnh khung ảnh gỗ và lưu giữ kỷ niệm của bạn.</p>
+            </div>
+            <div className="hidden md:block"><AuthActions compact /></div>
           </div>
           
           <Step1Upload />

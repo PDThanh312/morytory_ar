@@ -1,0 +1,5 @@
+# Chỉ dùng cho môi trường local. Hãy thay bằng chuỗi ngẫu nhiên dài tối thiểu 32 ký tự.
+AUTH_SECRET=change-this-local-secret-to-at-least-32-characters
+
+# Danh sách email admin khởi tạo, phân tách bằng dấu phẩy.
+ADMIN_EMAILS=admin@example.com

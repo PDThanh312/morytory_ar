@@ -1,25 +1,18 @@
-import { ShoppingCart } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import AuthActions from './auth/AuthActions';
 
 export default function HomePage() {
   const navigate = useNavigate();
 
   return (
     <div className="min-h-screen flex flex-col bg-brand-bg text-brand-text font-sans">
-      {/* Sticky Header */}
-      <header className="sticky top-0 z-50 bg-brand-bg/90 backdrop-blur-md border-b border-brand-wood/20 px-6 py-4 flex justify-between items-center shadow-sm">
+      <header className="sticky top-0 z-50 bg-brand-bg/90 backdrop-blur-md border-b border-brand-wood/20 px-4 sm:px-6 py-4 flex justify-between items-center shadow-sm gap-4">
         <div className="text-2xl font-serif font-bold text-brand-wood tracking-wide">
           MoryTory
         </div>
-        <div className="relative cursor-pointer hover:text-brand-wood transition-colors">
-          <ShoppingCart className="w-6 h-6" />
-          <span className="absolute -top-2 -right-2 bg-brand-accent-green text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full">
-            0
-          </span>
-        </div>
+        <AuthActions />
       </header>
 
-      {/* Hero Section */}
       <main className="flex-1 flex flex-col items-center justify-center text-center px-4 py-20">
         <div className="max-w-3xl mx-auto space-y-8">
           <h1 className="text-4xl md:text-6xl font-serif font-bold text-brand-text leading-tight">
@@ -28,7 +21,7 @@ export default function HomePage() {
           <p className="text-lg md:text-xl text-gray-600 max-w-2xl mx-auto">
             Chế tác khung ảnh gỗ mộc mạc, cao cấp kết hợp hiệu ứng sống động. Quét để tái hiện những khoảnh khắc tuyệt vời nhất.
           </p>
-          
+
           <div className="pt-8">
             <button
               onClick={() => navigate('/design')}
