@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800">
+  <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#edf1e9"/><stop offset="1" stop-color="#c8d1bd"/></linearGradient><linearGradient id="wood" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ead4a9"/><stop offset=".5" stop-color="#cfad75"/><stop offset="1" stop-color="#a57a44"/></linearGradient></defs>
+  <rect width="800" height="800" fill="url(#bg)"/><ellipse cx="400" cy="695" rx="285" ry="42" fill="#57624e" opacity=".16"/>
+  <g transform="rotate(-2 400 390)"><rect x="145" y="82" width="510" height="610" rx="6" fill="url(#wood)"/><rect x="187" y="124" width="426" height="526" fill="#f8f4e8"/><rect x="210" y="147" width="380" height="480" fill="#9db7b3"/><circle cx="485" cy="280" r="74" fill="#f2ddb8"/><path d="M210 520c68-116 135-161 201-135 61 24 96 112 179 90v152H210z" fill="#637e72"/><path d="M210 586c96-53 180-50 265 9 37 26 75 30 115 14v18H210z" fill="#3d5d54"/></g>
+  <text x="400" y="755" text-anchor="middle" font-family="Georgia,serif" font-size="32" fill="#59644f">GALLERY PINE</text>
+</svg>

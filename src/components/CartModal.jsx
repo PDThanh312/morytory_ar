@@ -1,105 +1,49 @@
-import React, { useState } from 'react';
-import { X, Trash2 } from 'lucide-react';
+import { useState } from 'react';
+import { Minus, Plus, ShoppingBag, Trash2, X } from 'lucide-react';
 import { useCart, useCartDispatch } from '../store/CartContext';
 import CheckoutModal from './CheckoutModal';
+import { formatCurrency } from '../data/products';
+
+function itemPrice(item) {
+  return Number(item.unitPrice ?? item.pricing?.total ?? 0) * Number(item.quantity || 1);
+}
 
 export default function CartModal() {
   const { isOpen, items } = useCart();
   const dispatch = useCartDispatch();
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
 
-  if (!isOpen) return null;
-
-  const totalAmount = items.reduce((sum, item) => sum + item.pricing.total, 0);
-
-  const handleCheckout = () => {
-    setIsCheckoutOpen(true);
-  };
+  if (!isOpen && !isCheckoutOpen) return null;
+  const totalAmount = items.reduce((sum, item) => sum + itemPrice(item), 0);
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-end md:items-center justify-center p-0 md:p-4 transition-opacity">
-        <div className="bg-white rounded-t-3xl md:rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
-          <div className="flex items-center justify-between p-4 border-b border-gray-100">
-            <h2 className="text-xl font-serif font-bold text-brand-text">Giỏ hàng của bạn ({items.length})</h2>
-            <button 
-              onClick={() => dispatch({ type: 'SET_CART_OPEN', payload: false })}
-              className="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-
-          <div className="overflow-y-auto p-4 flex-1">
-            {items.length === 0 ? (
-              <div className="text-center py-10 text-gray-500">
-                <p>Giỏ hàng đang trống.</p>
-                <button 
-                  onClick={() => dispatch({ type: 'SET_CART_OPEN', payload: false })}
-                  className="mt-4 text-brand-wood font-medium"
-                >
-                  Tiếp tục thiết kế
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {items.map((item) => (
-                  <div key={item.id} className="flex gap-4 p-3 bg-gray-50 rounded-xl border border-gray-100">
-                    <div className="w-20 h-20 bg-gray-200 rounded-lg overflow-hidden shrink-0">
-                      <img src={item.photoPreviewUrl} alt="Preview" className="w-full h-full object-cover" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex justify-between items-start">
-                        <h3 className="font-semibold text-brand-text text-sm truncate">Khung {item.frameSize} cm</h3>
-                        <button 
-                          onClick={() => dispatch({ type: 'REMOVE_ITEM', payload: item.id })}
-                          className="text-gray-400 hover:text-red-500 p-1"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+      {isOpen && (
+        <div className="fixed inset-0 z-[70] flex justify-end bg-black/45 backdrop-blur-sm" onMouseDown={(event) => event.target === event.currentTarget && dispatch({ type: 'SET_CART_OPEN', payload: false })}>
+          <aside className="flex h-full w-full max-w-md flex-col bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-gray-100 p-5"><div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand-accent-green">MoryTory</p><h2 className="font-serif text-2xl font-bold">Giỏ hàng ({items.length})</h2></div><button onClick={() => dispatch({ type: 'SET_CART_OPEN', payload: false })} className="grid h-10 w-10 place-items-center rounded-full bg-gray-100"><X className="h-5 w-5" /></button></div>
+            <div className="flex-1 overflow-y-auto p-5">
+              {!items.length ? (
+                <div className="grid h-full place-items-center text-center"><div><span className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-brand-accent-beige text-brand-wood"><ShoppingBag className="h-7 w-7" /></span><h3 className="mt-4 font-serif text-xl font-bold">Giỏ hàng đang trống</h3><p className="mt-2 text-sm text-gray-500">Hãy chọn một mẫu khung hoặc tạo thiết kế riêng.</p><button onClick={() => dispatch({ type: 'SET_CART_OPEN', payload: false })} className="mt-5 font-semibold text-brand-wood">Tiếp tục mua sắm</button></div></div>
+              ) : (
+                <div className="space-y-4">
+                  {items.map((item) => (
+                    <article key={item.id} className="flex gap-4 rounded-2xl border border-gray-100 bg-brand-bg p-3">
+                      <img src={item.photoPreviewUrl || item.image || '/products/classic-oak.svg'} alt={item.name || 'Khung ảnh cá nhân hóa'} className="h-24 w-24 rounded-xl object-cover" />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-2"><div><h3 className="truncate font-semibold">{item.name || `Khung cá nhân hóa ${item.frameSize}`}</h3><p className="mt-1 text-xs text-gray-500">{item.color || `Kích thước ${item.frameSize} cm`}{item.selectedAREffect ? ` · AR ${item.selectedAREffect}` : ''}</p></div><button onClick={() => dispatch({ type: 'REMOVE_ITEM', payload: item.id })} className="p-1 text-gray-400 hover:text-red-500"><Trash2 className="h-4 w-4" /></button></div>
+                        <div className="mt-4 flex items-center justify-between"><span className="font-bold text-brand-wood">{formatCurrency(itemPrice(item))}</span>{item.type === 'catalog' ? <div className="flex items-center rounded-full border border-gray-200 bg-white"><button onClick={() => dispatch({ type: 'UPDATE_QUANTITY', payload: { id: item.id, quantity: Number(item.quantity || 1) - 1 } })} className="p-2"><Minus className="h-3 w-3" /></button><span className="w-7 text-center text-xs font-semibold">{item.quantity || 1}</span><button onClick={() => dispatch({ type: 'UPDATE_QUANTITY', payload: { id: item.id, quantity: Number(item.quantity || 1) + 1 } })} className="p-2"><Plus className="h-3 w-3" /></button></div> : <span className="text-xs text-gray-400">SL 1</span>}</div>
                       </div>
-                      <p className="text-xs text-gray-500 mt-1">
-                        Hiệu ứng: {item.selectedAREffect || 'Không'}
-                      </p>
-                      {item.overlay?.text && (
-                        <p className="text-xs text-gray-500 mt-1 truncate">
-                          Chữ: "{item.overlay.text}"
-                        </p>
-                      )}
-                      <p className="text-brand-wood font-medium mt-2">
-                        {item.pricing.total.toLocaleString('vi-VN')}đ
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {items.length > 0 && (
-            <div className="border-t border-gray-100 p-4 bg-white">
-              <div className="flex justify-between items-center mb-4">
-                <span className="font-medium text-gray-600">Tổng cộng:</span>
-                <span className="text-2xl font-bold text-brand-text">
-                  {totalAmount.toLocaleString('vi-VN')}đ
-                </span>
-              </div>
-              <button 
-                onClick={handleCheckout}
-                className="w-full py-3 bg-brand-accent-green text-white font-semibold rounded-xl shadow-lg hover:bg-[#7a9352] transition-colors"
-              >
-                Thanh toán ngay
-              </button>
+                    </article>
+                  ))}
+                </div>
+              )}
             </div>
-          )}
+            {!!items.length && <div className="border-t border-gray-100 bg-white p-5"><div className="mb-4 flex items-center justify-between"><span className="text-gray-500">Tạm tính</span><span className="text-2xl font-bold">{formatCurrency(totalAmount)}</span></div><p className="mb-4 text-xs text-gray-400">Phí vận chuyển được tính ở bước thanh toán.</p><button onClick={() => { setIsCheckoutOpen(true); dispatch({ type: 'SET_CART_OPEN', payload: false }); }} className="w-full rounded-2xl bg-brand-accent-green py-4 font-semibold text-white shadow-lg hover:bg-[#768e4e]">Tiến hành thanh toán</button></div>}
+          </aside>
         </div>
-      </div>
-
-      <CheckoutModal 
-        isOpen={isCheckoutOpen} 
-        onClose={() => setIsCheckoutOpen(false)} 
-        cartItems={items}
-      />
+      )}
+      <CheckoutModal isOpen={isCheckoutOpen} onClose={() => setIsCheckoutOpen(false)} cartItems={items} />
     </>
   );
 }

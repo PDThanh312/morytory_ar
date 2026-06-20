@@ -3,47 +3,40 @@ import { DesignProvider } from './store/DesignContext';
 import { CartProvider } from './store/CartContext';
 import ProtectedRoute from './auth/ProtectedRoute';
 import HomePage from './components/HomePage';
+import ProductsPage from './components/ProductsPage';
+import ProductDetailPage from './components/ProductDetailPage';
 import DesignPage from './components/DesignPage';
+import OrdersPage from './components/OrdersPage';
 import ARRoute from './components/ARRoute';
 import LoginPage from './components/LoginPage';
 import RegisterPage from './components/RegisterPage';
 import AdminPage from './components/AdminPage';
-import CartIcon from './components/CartIcon';
 import CartModal from './components/CartModal';
+import AIChatbot from './components/chat/AIChatbot';
 
-function StoreChrome() {
+function GlobalChrome() {
   const { pathname } = useLocation();
-  const hidden = pathname === '/ar' || pathname === '/login' || pathname === '/register' || pathname.startsWith('/admin');
-  if (hidden) return null;
-  return <><CartIcon /><CartModal /></>;
+  if (pathname === '/ar' || pathname.startsWith('/admin')) return null;
+  const hideChat = pathname === '/login' || pathname === '/register';
+  return <><CartModal />{!hideChat && <AIChatbot />}</>;
 }
 
 function App() {
   return (
     <CartProvider>
       <DesignProvider>
-        <StoreChrome />
+        <GlobalChrome />
         <Routes>
           <Route path="/" element={<HomePage />} />
+          <Route path="/products" element={<ProductsPage />} />
+          <Route path="/products/:slug" element={<ProductDetailPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
-          <Route
-            path="/design"
-            element={
-              <ProtectedRoute>
-                <DesignPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin"
-            element={
-              <ProtectedRoute roles={['admin']}>
-                <AdminPage />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/design" element={<ProtectedRoute><DesignPage /></ProtectedRoute>} />
+          <Route path="/orders" element={<ProtectedRoute><OrdersPage /></ProtectedRoute>} />
+          <Route path="/admin" element={<ProtectedRoute roles={['admin']}><AdminPage /></ProtectedRoute>} />
           <Route path="/ar" element={<ARRoute />} />
+          <Route path="*" element={<HomePage />} />
         </Routes>
       </DesignProvider>
     </CartProvider>

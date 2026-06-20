@@ -7,7 +7,6 @@ import Step2FrameSize from './Step2FrameSize';
 import Step3ARSelection from './Step3ARSelection';
 import Step4AREditor from './Step4AREditor';
 import Step5Summary from './Step5Summary';
-import CheckoutModal from './CheckoutModal';
 import { useDesign, useDesignDispatch } from '../store/DesignContext';
 import { useCartDispatch } from '../store/CartContext';
 import AuthActions from './auth/AuthActions';
@@ -15,7 +14,6 @@ import AuthActions from './auth/AuthActions';
 export default function DesignPage() {
   const navigate = useNavigate();
   const [isPreviewCollapsed, setIsPreviewCollapsed] = useState(false);
-  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const { selectedAREffect, photoPreviewUrl, overlay, frameSize, pricing, photo } = useDesign();
   const designDispatch = useDesignDispatch();
   const cartDispatch = useCartDispatch();
@@ -26,7 +24,12 @@ export default function DesignPage() {
       return;
     }
     const newItem = {
-      id: Math.random().toString(36).substr(2, 9),
+      id: crypto.randomUUID(),
+      type: 'custom',
+      name: `Khung ảnh AR cá nhân hóa ${frameSize}`,
+      quantity: 1,
+      unitPrice: pricing.total,
+      image: photoPreviewUrl,
       photoPreviewUrl,
       photo,
       frameSize,
