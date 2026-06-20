@@ -8,7 +8,7 @@ export default function Step5Summary({ onOrder, buttonText = "Đặt hàng ngay"
       <div className="max-w-xl mx-auto flex items-center justify-between">
         <div>
           <div className="text-sm text-gray-500 mb-1">
-            Khung gỗ ({pricing.base.toLocaleString()}đ) {selectedAREffect && '+ Hiệu ứng AR (5.000đ)'}
+            Khung gỗ ({pricing.base.toLocaleString()}đ) {selectedAREffect && '+ Hiệu ứng AR (20.000đ)'}
           </div>
           <div className="text-2xl font-bold text-brand-text">
             {pricing.total.toLocaleString()}đ

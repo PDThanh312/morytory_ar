@@ -1,9 +1,9 @@
 import { useDesign, useDesignDispatch } from '../store/DesignContext';
 
 const SIZES = [
-  { id: '10x15', label: '10x15 cm', desc: 'Để bàn / Kệ sách', price: 35000 },
-  { id: '13x18', label: '13x18 cm', desc: 'Làm quà tặng', price: 40000 },
-  { id: '15x21', label: '15x21 cm', desc: 'Treo tường', price: 45000 },
+  { id: '10x15', label: '10x15 cm', desc: 'Để bàn / Kệ sách', price: 79000 },
+  { id: '13x18', label: '13x18 cm', desc: 'Làm quà tặng', price: 109000 },
+  { id: '15x21', label: '15x21 cm', desc: 'Treo tường', price: 139000 },
 ];
 
 export default function Step2FrameSize() {

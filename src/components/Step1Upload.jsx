@@ -1,81 +1,36 @@
 import { useState } from 'react';
-import { UploadCloud } from 'lucide-react';
+import { ImagePlus, UploadCloud } from 'lucide-react';
 import { useDesign, useDesignDispatch } from '../store/DesignContext';
 import { validateImage, revokePreviewUrl } from '../utils/fileUtils';
 
 export default function Step1Upload() {
-  const { isPrintingPhoto, photoPreviewUrl } = useDesign();
+  const { photoPreviewUrl } = useDesign();
   const dispatch = useDesignDispatch();
   const [error, setError] = useState('');
 
-  const handleToggle = (checked) => {
-    dispatch({ type: 'SET_PRINTING_PHOTO', payload: checked });
-    if (!checked && photoPreviewUrl) {
-      revokePreviewUrl(photoPreviewUrl);
-    }
-  };
-
-  const handleFileChange = (e) => {
-    const file = e.target.files?.[0];
+  const handleFileChange = (event) => {
+    const file = event.target.files?.[0];
     if (!file) return;
-
     const validation = validateImage(file);
-    if (!validation.valid) {
-      setError(validation.error);
-      return;
-    }
-
+    if (!validation.valid) { setError(validation.error); return; }
     setError('');
-    
-    // Cleanup previous URL if any
-    if (photoPreviewUrl) {
-      revokePreviewUrl(photoPreviewUrl);
-    }
-
-    const url = URL.createObjectURL(file);
-    dispatch({ type: 'SET_PHOTO', payload: { file, url } });
+    if (photoPreviewUrl) revokePreviewUrl(photoPreviewUrl);
+    dispatch({ type: 'SET_PRINTING_PHOTO', payload: true });
+    dispatch({ type: 'SET_PHOTO', payload: { file, url: URL.createObjectURL(file) } });
   };
 
   return (
     <div className="space-y-4">
-      <h3 className="text-xl font-semibold text-brand-text">1. Tuỳ chọn in ảnh</h3>
-      
-      {/* Checkbox Toggle */}
-      <label className="flex items-center space-x-3 cursor-pointer p-4 border border-brand-wood/20 rounded-xl bg-[#FAF7F2] hover:bg-brand-wood/5 transition-colors">
-        <input 
-          type="checkbox"
-          checked={isPrintingPhoto}
-          onChange={(e) => handleToggle(e.target.checked)}
-          className="w-5 h-5 accent-brand-accent-green cursor-pointer"
-        />
-        <span className="text-brand-text font-medium select-none">
-          Bạn có muốn in kèm ảnh không?
-        </span>
-      </label>
-
-      {/* Conditional Upload Box */}
-      {isPrintingPhoto && (
-        <div className="space-y-2 animate-in slide-in-from-top-2 duration-300">
-          <div className="border-2 border-dashed border-brand-wood/30 rounded-xl p-8 text-center hover:bg-brand-wood/5 transition-colors cursor-pointer relative group bg-white">
-            <input 
-              type="file" 
-              accept="image/jpeg, image/png, image/webp" 
-              onChange={handleFileChange}
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-            />
-            <div className="flex flex-col items-center justify-center space-y-3 pointer-events-none">
-              <div className="p-3 bg-[#FAF7F2] rounded-full shadow-sm text-brand-wood group-hover:scale-110 transition-transform">
-                <UploadCloud className="w-6 h-6" />
-              </div>
-              <div className="text-sm">
-                <span className="font-semibold text-brand-wood">Nhấp để tải ảnh lên</span> hoặc kéo thả vào đây
-              </div>
-              <div className="text-xs text-gray-400">Định dạng JPG, PNG, WebP tối đa 10MB</div>
-            </div>
-          </div>
-          {error && <div className="text-red-500 text-sm mt-1">{error}</div>}
+      <div><h3 className="text-xl font-semibold text-brand-text">1. Tải ảnh kỷ niệm</h3><p className="mt-1 text-sm text-gray-500">Ảnh này sẽ được in và dùng làm mục tiêu nhận diện cho trải nghiệm AR.</p></div>
+      <div className="group relative cursor-pointer rounded-2xl border-2 border-dashed border-brand-wood/30 bg-brand-bg p-8 text-center transition hover:border-brand-wood hover:bg-brand-accent-beige/30">
+        <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handleFileChange} className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0" />
+        <div className="pointer-events-none flex flex-col items-center gap-3">
+          <span className="grid h-14 w-14 place-items-center rounded-2xl bg-white text-brand-wood shadow-sm">{photoPreviewUrl ? <ImagePlus className="h-6 w-6" /> : <UploadCloud className="h-6 w-6" />}</span>
+          <p className="text-sm"><strong className="text-brand-wood">{photoPreviewUrl ? 'Thay ảnh khác' : 'Nhấp để tải ảnh lên'}</strong> hoặc kéo thả vào đây</p>
+          <p className="text-xs text-gray-400">JPG, PNG, WebP · tối đa 10MB · nên dùng ảnh rõ và đủ sáng</p>
         </div>
-      )}
+      </div>
+      {error && <div className="text-sm text-red-500">{error}</div>}
     </div>
   );
 }

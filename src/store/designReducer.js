@@ -1,22 +1,22 @@
 export const initialState = {
-  isPrintingPhoto: false,
+  isPrintingPhoto: true,
   photo: null,           // File object
   photoPreviewUrl: null, // URL.createObjectURL result
   frameSize: '10x15',    // Default
   selectedAREffect: null, // 'snow' | 'sparkle' | 'petals' | null
   overlay: { text: '', fontStyle: 'serif', fontSize: 16 },
-  pricing: { base: 35000, arAddon: 5000, total: 35000 },
+  pricing: { base: 79000, arAddon: 20000, total: 79000 },
 };
 
 const getBasePrice = (size) => {
-  if (size === '15x21') return 45000;
-  if (size === '13x18') return 40000;
-  return 35000;
+  if (size === '15x21') return 139000;
+  if (size === '13x18') return 109000;
+  return 79000;
 };
 
 const calculateTotal = (size, arEffect) => {
   const base = getBasePrice(size);
-  return arEffect ? base + 5000 : base;
+  return arEffect ? base + 20000 : base;
 };
 
 export function designReducer(state, action) {

@@ -56,3 +56,7 @@
   margin: 0 !important;
   padding: 0 !important;
 }
+html { scroll-behavior: smooth; }
+body { margin: 0; min-width: 320px; min-height: 100vh; }
+button, a, input, textarea, select { -webkit-tap-highlight-color: transparent; }
+::selection { background: #ead6bf; color: #5c361b; }
