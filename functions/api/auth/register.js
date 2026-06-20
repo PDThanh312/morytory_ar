@@ -1,6 +1,8 @@
 import {
+  checkRateLimit,
   createSessionToken,
   hashPassword,
+  PASSWORD_ITERATIONS,
   isValidEmail,
   json,
   normalizeEmail,
@@ -12,6 +14,8 @@ import {
 
 export async function onRequestPost(context) {
   try {
+    const limited = await checkRateLimit(context, 'register', 8, 3600);
+    if (limited) return limited;
     const body = await context.request.json();
     const name = String(body.name || '').trim();
     const email = normalizeEmail(body.email);
@@ -41,6 +45,7 @@ export async function onRequestPost(context) {
       role: resolveRole(email, context.env, 'user'),
       passwordSalt: passwordData.salt,
       passwordHash: passwordData.hash,
+      passwordIterations: PASSWORD_ITERATIONS,
       createdAt: now,
       updatedAt: now,
     };

@@ -1,6 +1,7 @@
 const encoder = new TextEncoder();
 const SESSION_TTL_SECONDS = 7 * 24 * 60 * 60;
-const PASSWORD_ITERATIONS = 120000;
+export const PASSWORD_ITERATIONS = 310000;
+const LEGACY_PASSWORD_ITERATIONS = 120000;
 
 export function json(data, status = 200, extraHeaders = {}) {
   return new Response(JSON.stringify(data), {
@@ -11,6 +12,22 @@ export function json(data, status = 200, extraHeaders = {}) {
       ...extraHeaders,
     },
   });
+}
+
+
+export async function checkRateLimit(context, bucket, limit, windowSeconds) {
+  const forwarded = context.request.headers.get('CF-Connecting-IP') || context.request.headers.get('X-Forwarded-For') || 'local';
+  const client = String(forwarded).split(',')[0].trim().replace(/[^a-zA-Z0-9:._-]/g, '').slice(0, 80);
+  const key = `rate_${bucket}_${client}`;
+  const now = Math.floor(Date.now() / 1000);
+  const current = await context.env.MORYTORY_ORDERS.get(key, 'json');
+  const record = !current || current.resetAt <= now ? { count: 0, resetAt: now + windowSeconds } : current;
+  record.count += 1;
+  await context.env.MORYTORY_ORDERS.put(key, JSON.stringify(record), { expirationTtl: Math.max(60, record.resetAt - now) });
+  if (record.count > limit) {
+    return json({ error: 'Bạn thao tác quá nhanh. Vui lòng thử lại sau.' }, 429, { 'Retry-After': String(Math.max(1, record.resetAt - now)) });
+  }
+  return null;
 }
 
 export function normalizeEmail(value = '') {
@@ -99,7 +116,7 @@ export function resolveRole(email, env, currentRole = 'user') {
 }
 
 
-export async function hashPassword(password, salt = randomBase64Url(16)) {
+export async function hashPassword(password, salt = randomBase64Url(16), iterations = PASSWORD_ITERATIONS) {
   const keyMaterial = await crypto.subtle.importKey(
     'raw',
     encoder.encode(password),
@@ -112,7 +129,7 @@ export async function hashPassword(password, salt = randomBase64Url(16)) {
       name: 'PBKDF2',
       hash: 'SHA-256',
       salt: base64UrlToBytes(salt),
-      iterations: PASSWORD_ITERATIONS,
+      iterations,
     },
     keyMaterial,
     256,
@@ -120,8 +137,8 @@ export async function hashPassword(password, salt = randomBase64Url(16)) {
   return { salt, hash: bytesToBase64Url(new Uint8Array(bits)) };
 }
 
-export async function verifyPassword(password, salt, expectedHash) {
-  const { hash } = await hashPassword(password, salt);
+export async function verifyPassword(password, salt, expectedHash, iterations = LEGACY_PASSWORD_ITERATIONS) {
+  const { hash } = await hashPassword(password, salt, iterations);
   const actual = base64UrlToBytes(hash);
   const expected = base64UrlToBytes(expectedHash);
   if (actual.length !== expected.length) return false;

@@ -1,0 +1,565 @@
+======================================================================
+MORYTORY - HƯỚNG DẪN SỬ DỤNG, CẤU HÌNH VÀ DEPLOY PRODUCTION
+Cập nhật: 20/06/2026
+======================================================================
+
+MỤC LỤC
+1. Bản này đã có gì
+2. Điều kiện trước khi deploy
+3. Chạy local
+4. Tạo tài nguyên Cloudflare
+5. Cấu hình Cloudflare Pages
+6. Cấu hình email Resend
+7. Cấu hình thanh toán
+8. Cấu hình chatbot AI
+9. Tạo tài khoản admin
+10. Hướng dẫn sử dụng cho khách hàng
+11. Hướng dẫn vận hành cho admin
+12. Cập nhật sản phẩm, giá và phí vận chuyển
+13. Checklist trước khi mở bán
+14. Backup, cập nhật và xử lý sự cố
+15. Những điều chủ dự án vẫn phải tự hoàn tất
+
+----------------------------------------------------------------------
+1. BẢN NÀY ĐÃ CÓ GÌ
+----------------------------------------------------------------------
+
+- Homepage và bộ sưu tập khung ảnh.
+- Trang chi tiết sản phẩm, chọn màu, số lượng, giỏ hàng.
+- Đăng ký, đăng nhập, đăng xuất và phân quyền user/admin.
+- Session bằng cookie HttpOnly; không lưu token đăng nhập trong localStorage.
+- Xác minh email, quên mật khẩu và đặt lại mật khẩu khi bật Resend.
+- Thiết kế khung ảnh cá nhân hóa và QR trải nghiệm AR.
+- Checkout, tính giá phía server, phí vận chuyển và idempotency.
+- COD, chuyển khoản thủ công và tích hợp payOS tùy chọn.
+- Lịch sử đơn hàng cho khách.
+- Dashboard admin quản lý đơn, thanh toán, role và trạng thái tài khoản.
+- Chatbot OpenAI tùy chọn; không có key vẫn dùng FAQ tự động.
+- Cloudflare D1 cho users/sessions/orders/audit logs.
+- Cloudflare KV cho dữ liệu ảnh/hiệu ứng AR.
+- Rate limit cơ bản, security headers và webhook signature verification.
+
+LƯU Ý QUAN TRỌNG:
+Source này là nền tảng triển khai thực tế, nhưng không thể tự chứa tài khoản ngân
+hàng, khóa payOS, domain email, OpenAI key hoặc thông tin pháp lý của bạn. Bạn
+phải cấu hình các phần đó trước khi nhận khách và tiền thật.
+
+----------------------------------------------------------------------
+2. ĐIỀU KIỆN TRƯỚC KHI DEPLOY
+----------------------------------------------------------------------
+
+- Node.js >= 20.19 hoặc >= 22.12.
+- Tài khoản Cloudflare.
+- Repository Git hoặc source code đã giải nén.
+- Domain riêng nên có nếu bán thật.
+- Tài khoản payOS nếu muốn thanh toán online.
+- Tài khoản Resend và domain email đã xác minh nếu muốn xác minh email/reset.
+- OpenAI API key nếu muốn chatbot AI thay vì FAQ.
+
+Kiểm tra Node:
+
+  node -v
+  npm.cmd -v
+
+Cài package và kiểm tra source:
+
+  npm.cmd install
+  npm.cmd run check
+  npm.cmd audit
+
+Kết quả mong đợi:
+- lint không lỗi
+- Vite build thành công
+- npm audit không có vulnerability tại thời điểm cài
+
+----------------------------------------------------------------------
+3. CHẠY LOCAL
+----------------------------------------------------------------------
+
+Bước 1: Tạo file local config
+
+  Copy-Item .dev.vars.example .dev.vars
+  notepad .dev.vars
+
+Bước 2: Điền tối thiểu
+
+  PUBLIC_BASE_URL=http://localhost:8788
+  ADMIN_EMAILS=email-admin-cua-ban@example.com
+  REQUIRE_EMAIL_VERIFICATION=false
+
+  COD_ENABLED=true
+  BANK_TRANSFER_ENABLED=false
+  PAYOS_ENABLED=false
+
+  SUPPORT_EMAIL=email-ho-tro-cua-ban@example.com
+  SUPPORT_PHONE=so-dien-thoai-cua-ban
+  SUPPORT_ADDRESS=dia-chi-cua-hang
+
+Bước 3: Khởi tạo D1 local và chạy
+
+  npm.cmd run db:migrate:local
+  npm.cmd run dev:full
+
+Bước 4: Mở trình duyệt
+
+  http://localhost:8788
+
+Dữ liệu local nằm trong `.wrangler/`. Muốn reset toàn bộ dữ liệu local:
+
+  Ctrl + C
+  Remove-Item -Recurse -Force .wrangler
+  npm.cmd run db:migrate:local
+  npm.cmd run dev:full
+
+Không commit `.dev.vars` hoặc `.wrangler` lên Git.
+
+----------------------------------------------------------------------
+4. TẠO TÀI NGUYÊN CLOUDFLARE
+----------------------------------------------------------------------
+
+Bước 1: Đăng nhập Wrangler
+
+  npx.cmd wrangler login
+
+Bước 2: Tạo D1
+
+  npx.cmd wrangler d1 create morytory-db
+
+Lệnh sẽ trả về database_id. Mở `wrangler.toml` và thay:
+
+  database_id = "REPLACE_WITH_D1_DATABASE_ID"
+
+bằng ID thật.
+
+Bước 3: Tạo KV production và preview
+
+  npx.cmd wrangler kv namespace create morytory-ar
+  npx.cmd wrangler kv namespace create morytory-ar-preview
+
+Copy hai ID và thay trong `wrangler.toml`:
+
+  id = "REPLACE_WITH_KV_NAMESPACE_ID"
+  preview_id = "REPLACE_WITH_PREVIEW_KV_NAMESPACE_ID"
+
+Giữ nguyên tên binding:
+
+  DB
+  MORYTORY_AR
+
+Bước 4: Tạo Pages project
+
+Cách dễ nhất:
+- Vào Cloudflare Dashboard
+- Workers & Pages
+- Create application
+- Pages
+- Kết nối GitHub hoặc tạo project tên `morytory-ar`
+
+Cấu hình build nếu kết nối Git:
+
+  Framework preset: React (Vite)
+  Build command: npm run build
+  Build output directory: dist
+  Root directory: để trống nếu source nằm ở root repo
+  Production branch: main
+
+Cloudflare Pages có thể cấu hình D1/KV bằng `wrangler.toml` hoặc Dashboard. Nếu
+Dashboard yêu cầu binding thủ công, dùng đúng hai tên `DB` và `MORYTORY_AR`.
+
+----------------------------------------------------------------------
+5. CẤU HÌNH CLOUDFLARE PAGES
+----------------------------------------------------------------------
+
+Trong Pages project:
+
+  Settings -> Variables and Secrets
+
+A. Variables thường
+
+  PUBLIC_BASE_URL=https://domain-that-cua-ban.vn
+  ADMIN_EMAILS=email-admin-cua-ban@example.com
+  REQUIRE_EMAIL_VERIFICATION=true hoặc false
+
+  COD_ENABLED=true hoặc false
+  BANK_TRANSFER_ENABLED=true hoặc false
+  BANK_NAME=ten-ngan-hang
+  BANK_ACCOUNT=so-tai-khoan
+  BANK_OWNER=ten-chu-tai-khoan
+  BANK_QR_IMAGE_URL=/bank-qr.png
+
+  PAYOS_ENABLED=true hoặc false
+  OPENAI_MODEL=gpt-5-mini
+
+  SUPPORT_EMAIL=email-ho-tro
+  SUPPORT_PHONE=so-dien-thoai
+  SUPPORT_ADDRESS=dia-chi-cua-hang
+
+  EMAIL_FROM=MoryTory <no-reply@domain-cua-ban.vn>
+
+B. Secrets phải chọn Encrypt
+
+  RESEND_API_KEY
+  OPENAI_API_KEY
+  PAYOS_CLIENT_ID
+  PAYOS_API_KEY
+  PAYOS_CHECKSUM_KEY
+
+Không để key thật trong `.dev.vars.example`, `wrangler.toml`, GitHub hoặc ảnh chụp.
+
+C. Apply schema lên D1 production
+
+Sau khi đã thay database_id:
+
+  npm.cmd run db:migrate:remote
+
+D. Deploy
+
+Nếu deploy trực tiếp bằng Wrangler:
+
+  npm.cmd run deploy
+
+Script deploy sẽ dừng nếu `wrangler.toml` còn placeholder `REPLACE_WITH_*`.
+
+Nếu kết nối GitHub, push lên branch production để Cloudflare tự build. Sau khi
+thêm/chỉnh variables, secrets hoặc bindings, hãy redeploy.
+
+E. Kiểm tra health
+
+  https://domain-cua-ban.vn/api/health
+
+Kết quả đúng:
+
+  {"status":"ok","database":"ok",...}
+
+----------------------------------------------------------------------
+6. CẤU HÌNH EMAIL RESEND
+----------------------------------------------------------------------
+
+Chỉ bật xác minh email sau khi email gửi thành công.
+
+Bước thực hiện:
+1. Tạo tài khoản Resend.
+2. Thêm và xác minh domain gửi mail.
+3. Tạo API key.
+4. Trong Cloudflare, thêm encrypted secret `RESEND_API_KEY`.
+5. Đặt `EMAIL_FROM`, ví dụ:
+
+   MoryTory <no-reply@yourdomain.vn>
+
+6. Đặt `PUBLIC_BASE_URL` đúng domain production.
+7. Đặt `REQUIRE_EMAIL_VERIFICATION=true`.
+8. Redeploy.
+9. Test đăng ký, resend verification, forgot password và reset password.
+
+Nếu chưa cấu hình Resend, giữ:
+
+  REQUIRE_EMAIL_VERIFICATION=false
+
+Nếu bật true nhưng email không hoạt động, khách sẽ không thể đăng nhập bình thường.
+
+----------------------------------------------------------------------
+7. CẤU HÌNH THANH TOÁN
+----------------------------------------------------------------------
+
+7.1 COD
+
+  COD_ENABLED=true
+
+Admin cập nhật payment status sau khi thu tiền/đối soát.
+
+7.2 Chuyển khoản thủ công
+
+Điền:
+
+  BANK_TRANSFER_ENABLED=true
+  BANK_NAME=...
+  BANK_ACCOUNT=...
+  BANK_OWNER=...
+
+Tạo ảnh VietQR thật, đặt file tại:
+
+  public/bank-qr.png
+
+Sau đó:
+
+  BANK_QR_IMAGE_URL=/bank-qr.png
+
+Ảnh QR phải được tạo từ thông tin tài khoản thật và phải test bằng ứng dụng ngân
+hàng. Nếu không có ảnh QR, website vẫn hiển thị số tài khoản và nội dung chuyển.
+Admin phải tự đối soát và đánh dấu `Đã thanh toán`.
+
+7.3 payOS
+
+Bước thực hiện:
+1. Tạo tài khoản/kênh thanh toán payOS.
+2. Lấy Client ID, API Key và Checksum Key.
+3. Lưu ba giá trị dưới dạng encrypted secret Cloudflare.
+4. Đặt `PAYOS_ENABLED=true`.
+5. Redeploy.
+6. Đăng ký webhook URL:
+
+   https://domain-cua-ban.vn/api/payments/payos-webhook
+
+7. Test một giao dịch giá trị nhỏ.
+8. Kiểm tra:
+   - redirect tới payOS
+   - thanh toán thành công
+   - webhook được nhận
+   - order chuyển sang paid/confirmed
+   - số tiền webhook đúng tổng đơn
+
+Không chỉ dựa vào return URL để xác nhận đã trả tiền. Source xác nhận giao dịch
+qua webhook có chữ ký và kiểm tra số tiền.
+
+----------------------------------------------------------------------
+8. CẤU HÌNH CHATBOT AI
+----------------------------------------------------------------------
+
+Không có `OPENAI_API_KEY`:
+- Chatbot vẫn chạy FAQ nội bộ.
+- Không phát sinh chi phí OpenAI.
+
+Có OpenAI:
+1. Tạo API key trong OpenAI Platform.
+2. Thêm `OPENAI_API_KEY` dưới dạng encrypted secret.
+3. Đặt `OPENAI_MODEL`, mặc định `gpt-5-mini`.
+4. Redeploy.
+5. Test câu hỏi về giá, sản phẩm, vận chuyển và chính sách.
+
+API key chỉ nằm ở Pages Function. Frontend không nhận key.
+Source gửi `store:false` cho Responses API và giới hạn lịch sử/tokens, nhưng chủ
+project vẫn phải theo dõi chi phí và usage limit trong tài khoản OpenAI.
+
+----------------------------------------------------------------------
+9. TẠO TÀI KHOẢN ADMIN
+----------------------------------------------------------------------
+
+Bước 1: Trước khi đăng ký, đặt:
+
+  ADMIN_EMAILS=email-admin-cua-ban@example.com
+
+Có thể nhiều email, ngăn cách bằng dấu phẩy.
+
+Bước 2: Redeploy.
+
+Bước 3: Vào `/register` và đăng ký chính xác email đó.
+
+Bước 4: Đăng nhập và mở `/admin`.
+
+Admin bootstrap trong `ADMIN_EMAILS` không thể bị hạ xuống user bằng giao diện.
+Không dùng chung tài khoản admin cho nhiều người. Mỗi quản trị viên nên có email
+và mật khẩu riêng.
+
+----------------------------------------------------------------------
+10. HƯỚNG DẪN SỬ DỤNG CHO KHÁCH HÀNG
+----------------------------------------------------------------------
+
+Mua sản phẩm có sẵn:
+1. Vào Bộ sưu tập.
+2. Chọn khung, màu và số lượng.
+3. Thêm vào giỏ.
+4. Đăng nhập hoặc tạo tài khoản.
+5. Mở giỏ và Thanh toán.
+6. Điền tên, số điện thoại, địa chỉ.
+7. Chọn phương thức thanh toán.
+8. Theo dõi đơn tại `/orders`.
+
+Thiết kế khung AR:
+1. Đăng nhập.
+2. Vào Thiết kế AR.
+3. Tải ảnh hợp lệ.
+4. Chọn kích thước, hiệu ứng và lời nhắn.
+5. Thêm thiết kế vào giỏ.
+6. Checkout.
+7. Sau khi tạo đơn, QR AR được gắn với thiết kế.
+8. Quét QR bằng thiết bị có camera và dùng trên HTTPS.
+
+Quên mật khẩu:
+1. Vào `/forgot-password`.
+2. Nhập email.
+3. Mở email reset.
+4. Tạo mật khẩu mới tối thiểu 12 ký tự.
+
+----------------------------------------------------------------------
+11. HƯỚNG DẪN VẬN HÀNH CHO ADMIN
+----------------------------------------------------------------------
+
+Đăng nhập admin và vào:
+
+  /admin
+
+Quản lý đơn:
+- Chờ xác nhận
+- Đã xác nhận
+- Đang chuẩn bị
+- Đang giao
+- Hoàn thành
+- Đã hủy
+
+Trạng thái thanh toán:
+- Chưa thanh toán
+- Chờ đối soát
+- Đã thanh toán
+- Thanh toán lỗi
+- Đã hoàn tiền
+
+Quy trình gợi ý:
+1. Kiểm tra payment status.
+2. Xác nhận thông tin khách và nội dung cá nhân hóa.
+3. Chuyển đơn sang Đã xác nhận.
+4. In ảnh, sản xuất và kiểm tra QR AR.
+5. Chuyển Đang chuẩn bị -> Đang giao -> Hoàn thành.
+6. Với chuyển khoản thủ công, chỉ đánh dấu paid sau khi tiền đã vào tài khoản.
+7. Với hoàn tiền, xử lý ở nhà cung cấp thanh toán trước, sau đó cập nhật hệ thống.
+
+Quản lý tài khoản:
+- Có thể nâng user thành admin.
+- Có thể hạ admin khác nếu hệ thống vẫn còn ít nhất một admin hoạt động.
+- Có thể vô hiệu hóa tài khoản; session hiện tại sẽ bị xóa.
+- Không thể tự hạ quyền hoặc tự vô hiệu hóa chính mình.
+
+----------------------------------------------------------------------
+12. CẬP NHẬT SẢN PHẨM, GIÁ VÀ PHÍ VẬN CHUYỂN
+----------------------------------------------------------------------
+
+Sản phẩm có sẵn nằm tại:
+
+  src/data/products.js
+
+File này là nguồn thông tin cho giao diện và server catalog. Khi thêm sản phẩm:
+- id và slug phải duy nhất
+- price là số nguyên VND
+- colors không được rỗng
+- image nên nằm trong public/products/
+
+Giá khung tùy chỉnh, phụ phí AR và vận chuyển nằm tại:
+
+  functions/_lib/catalog.js
+
+Các biến:
+
+  CUSTOM_PRICES
+  AR_ADDON_PRICE
+  SHIPPING_FEE
+  FREE_SHIPPING_THRESHOLD
+
+Sau khi chỉnh:
+
+  npm.cmd run check
+  git add .
+  git commit -m "chore: update products and pricing"
+  git push
+
+Server luôn bỏ qua giá do browser gửi và tự tính lại bằng catalog hiện tại.
+
+----------------------------------------------------------------------
+13. CHECKLIST TRƯỚC KHI MỞ BÁN
+----------------------------------------------------------------------
+
+[ ] `npm run check` thành công.
+[ ] `npm audit` không có lỗi cần xử lý.
+[ ] `wrangler.toml` không còn REPLACE_WITH_*.
+[ ] D1 remote migration đã chạy.
+[ ] `/api/health` trả status ok.
+[ ] Domain production dùng HTTPS.
+[ ] PUBLIC_BASE_URL đúng domain thật.
+[ ] Email admin đúng và mật khẩu mạnh.
+[ ] Contact phone/email/address là thông tin thật.
+[ ] Giá, màu, ảnh và mô tả sản phẩm đã kiểm tra.
+[ ] Phí ship và ngưỡng miễn phí đúng chính sách.
+[ ] Điều khoản, bảo mật, đổi trả đã được chủ dự án/pháp lý duyệt.
+[ ] COD test thành công.
+[ ] Bank transfer/VietQR test bằng ứng dụng ngân hàng.
+[ ] payOS webhook test thật nếu bật.
+[ ] Email verification/reset test nếu bật.
+[ ] Chatbot test và có giới hạn chi phí nếu bật OpenAI.
+[ ] AR test trên Chrome Android và Safari iPhone qua HTTPS.
+[ ] Không có secret trong Git history.
+[ ] Có quy trình backup/export D1.
+[ ] Có người chịu trách nhiệm xử lý đơn, đối soát và hỗ trợ khách.
+
+----------------------------------------------------------------------
+14. BACKUP, CẬP NHẬT VÀ XỬ LÝ SỰ CỐ
+----------------------------------------------------------------------
+
+Backup:
+- Dùng Cloudflare D1 export theo tài liệu chính thức.
+- Backup trước migration hoặc thay đổi schema.
+- Không xóa KV AR nếu khung đã giao vẫn cần dùng QR.
+
+Cập nhật code:
+1. Tạo branch riêng.
+2. Chạy local.
+3. `npm run check`.
+4. Deploy preview.
+5. Test auth, checkout, admin, email, payment, AR.
+6. Merge production.
+
+Lỗi login/register:
+- Kiểm tra binding DB.
+- Kiểm tra migration.
+- Kiểm tra REQUIRE_EMAIL_VERIFICATION và Resend.
+- Kiểm tra Network response và Cloudflare Function logs.
+
+Lỗi checkout:
+- Kiểm tra user đã login và email đã verify nếu bắt buộc.
+- Kiểm tra phương thức payment đã được bật.
+- Kiểm tra giá/sản phẩm trong source.
+
+Lỗi payOS:
+- Kiểm tra 3 key.
+- Kiểm tra PAYOS_ENABLED=true.
+- Kiểm tra PUBLIC_BASE_URL.
+- Kiểm tra webhook URL và signature.
+- Không tự đánh paid nếu webhook chưa xác nhận.
+
+Lỗi AR:
+- Phải dùng HTTPS khi chạy production.
+- Kiểm tra quyền camera.
+- Kiểm tra KV binding MORYTORY_AR.
+- Kiểm tra QR có đúng orderId.
+
+----------------------------------------------------------------------
+15. NHỮNG ĐIỀU CHỦ DỰ ÁN VẪN PHẢI TỰ HOÀN TẤT
+----------------------------------------------------------------------
+
+Bản source không thể thay bạn thực hiện các công việc sau:
+- Mở/xác minh tài khoản Cloudflare, payOS, Resend và OpenAI.
+- Cung cấp tài khoản ngân hàng và khóa API thật.
+- Đăng ký domain và DNS.
+- Xác minh tư cách merchant với nhà cung cấp thanh toán.
+- Soạn chính sách phù hợp pháp luật và hoạt động kinh doanh cụ thể.
+- Thiết lập hóa đơn, thuế, vận chuyển và quy trình chăm sóc khách hàng.
+- Kiểm thử tải lớn, pentest độc lập và giám sát production.
+
+Không mở bán thật chỉ vì build thành công. Chỉ mở bán sau khi hoàn thành toàn bộ
+checklist và thực hiện ít nhất một đơn hàng end-to-end bằng dữ liệu thật.
+
+----------------------------------------------------------------------
+TÀI LIỆU CHÍNH THỨC
+----------------------------------------------------------------------
+
+Cloudflare Pages bindings:
+https://developers.cloudflare.com/pages/functions/bindings/
+
+Cloudflare D1:
+https://developers.cloudflare.com/d1/get-started/
+
+D1 migrations:
+https://developers.cloudflare.com/d1/reference/migrations/
+
+Cloudflare KV commands:
+https://developers.cloudflare.com/kv/reference/kv-commands/
+
+payOS:
+https://payos.vn/docs/
+
+Resend:
+https://resend.com/docs/api-reference/emails/send-email
+
+OpenAI Responses API:
+https://platform.openai.com/docs/api-reference/responses/create
+
+======================================================================
+HẾT HƯỚNG DẪN
+======================================================================
